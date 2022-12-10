@@ -58,7 +58,7 @@ abstract public class Assert {
 	}
 	
 	public static <T> void requireInstance(Object o, Class<T> clazz, String message) {
-		if (!o.getClass().equals(clazz)) throw new RuntimeException(message);
+		if (!o.getClass().isAssignableFrom(clazz)) throw new RuntimeException(message);
 	}
 	
 }

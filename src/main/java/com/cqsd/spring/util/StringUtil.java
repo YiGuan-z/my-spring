@@ -4,7 +4,7 @@ package com.cqsd.spring.util;
  * @author caseycheng
  * @date 2022/12/10-09:49
  **/
-public class StringUtil {
+public abstract class StringUtil {
 	//大写第一个单词的字母
 	public static String toUpperCase(String name) {
 		return checkUpperCase(name) ? name : modify(name, Character::toUpperCase);
@@ -40,7 +40,7 @@ public class StringUtil {
 		return action.apply(name.charAt(0));
 	}
 	
-	// 干掉字符串开始中的get或set关键字
+	// 干掉字符串开始中的get或set
 	public static String removeGetOrSet(String name) {
 		if (name.startsWith("set") || name.startsWith("get")) {
 			return name.substring(3);

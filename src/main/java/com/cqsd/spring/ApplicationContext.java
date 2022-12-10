@@ -4,33 +4,33 @@ package com.cqsd.spring;
 import com.cqsd.spring.annotation.*;
 import com.cqsd.spring.face.Application;
 import com.cqsd.spring.face.hook.BeanNameAware;
+import com.cqsd.spring.face.hook.BeanPostProcess;
 import com.cqsd.spring.face.hook.InitalizingBean;
 import com.cqsd.spring.util.*;
 import sun.misc.Unsafe;
 
-import java.beans.Introspector;
 import java.io.File;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 public class ApplicationContext implements Application {
 	//配置类
 	private final Class<?> configClass;
 	private final Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>();
-	private final Map<String, List<BeanDefinition>> beanDefinitionCache = new ConcurrentHashMap<>();
 	//单例池
 	private final Map<String, Object> singletonObjects = new ConcurrentHashMap<>();
+	private final List<BeanPostProcess> beanPostProcesseslist = new ArrayList<>();
 	private final static Unsafe unsafe = UnsafeUtil.getUnsafe();
 	
 	/**
 	 * 对配置类进行初始化操作，找到上面定义的包扫描路径扫描出Bean组件，优先创建出来
 	 *
-	 * @param configClass
+	 * @param configClass 被ComponentScan注释的配置类
 	 */
 	
 	public ApplicationContext(Class<?> configClass) {
@@ -61,29 +61,29 @@ public class ApplicationContext implements Application {
 			for (File f : Objects.requireNonNull(files)) {
 				String fileName = f.getAbsolutePath();
 				//定位包路径
-				fileName = fileName.substring(fileName.indexOf(packageName))
-						.replace('/', '.');
+				fileName = fileName.substring(fileName.indexOf(packageName)).replace('/', '.');
 				//查找class文件
 				if (fileName.endsWith(".class")) {
 					try {
 						//获取类路径
 						String classname = fileName.substring(0, fileName.indexOf(".class"));
 						Class<?> clazz = classLoader.loadClass(classname);
-						//如果被Component注释了
+						//如果是一个组件
 						if (clazz.isAnnotationPresent(Component.class)) {
+							
 							final var beanDefinitionBuilder = Builder.builder(BeanDefinition::new);
 							final var component = clazz.getAnnotation(Component.class);
 							var beanName = component.value();
-							//设置bean name
-							String beanScope = Scope.BeanScope.singleton.name();
+							//设置bean name 如果没有设置beanName就将类名的第一个字母小写
 							if ("".equals(beanName)) {
 //								beanName = Introspector.decapitalize(clazz.getSimpleName());
 								beanName = StringUtil.toLowerCase(clazz.getSimpleName());
 							}
-							//设置作用域
+							//设置作用域 默认是单例
+							String beanScope = Constant.SINGLETON;
 							if (clazz.isAnnotationPresent(Scope.class)) {
 								final var scope = clazz.getAnnotation(Scope.class);
-								beanScope = scope.value().toString();
+								beanScope = scope.value();
 							}
 							beanDefinitionBuilder
 									.with(BeanDefinition::setType, clazz)
@@ -100,51 +100,121 @@ public class ApplicationContext implements Application {
 		
 		for (String beanName : beanDefinitionMap.keySet()) {
 			BeanDefinition beanDefinition = beanDefinitionMap.get(beanName);
-			if (beanDefinition.getScope().equals(Scope.BeanScope.singleton.name())) {
+			if (beanDefinition.getScope().equals(Constant.SINGLETON)) {
 				Object bean = createBean(beanName, beanDefinition);
 				singletonObjects.put(beanName, bean);
+			}
+			//如果是bean对象处理器
+			if (BeanPostProcess.class.isAssignableFrom(beanDefinition.getType())) {
+				beanPostProcesseslist.add((BeanPostProcess) getBean(beanName));
 			}
 		}
 	}
 	
 	public Object createBean(String beanName, BeanDefinition definition) {
 		Class<?> clazz = definition.getType();
+		//检查是否有无参构造
+		final Constructor<?> noArgs = findNoArgsConstructor(clazz);
+		if (noArgs != null) {
+			return createNoArgsConstructor(clazz, noArgs, beanName);
+		} else {
+			//这里是有参构造
+			final Constructor<?> constructor = findMaxArgsConstructor(clazz);
+			return createAllArgsConstructor(constructor);
+
+//			throw new RuntimeException("有参构造尚未完成");
+		}
+		
+	}
+	
+	private Object createAllArgsConstructor(Constructor<?> constructor) {
+		Object instance;
 		try {
-			Object instance = unsafe.allocateInstance(clazz);
+			final var types = constructor.getParameterTypes();
+			final var args = Arrays.stream(types)
+					.map(type -> StringUtil.toLowerCase(type.getSimpleName()))
+					.map(this::getBean)
+					.toArray();
+			instance = constructor.newInstance(args);
+		} catch (Exception e) {
+			throw new NullPointerException("没有那个bean");
+		}
+		return instance;
+	}
+	
+	private Constructor<?> findMaxArgsConstructor(Class<?> clazz) {
+		final var constructor = Arrays.stream(clazz.getConstructors())
+				.max(Comparator.comparing(Constructor::getParameterCount));
+		if (constructor.isEmpty()) {
+			return null;
+		}
+		return constructor.get();
+		
+	}
+	
+	private Constructor<?> findNoArgsConstructor(Class<?> clazz) {
+		final var first = Arrays.stream(clazz.getDeclaredConstructors())
+				.filter(constructor -> constructor.getParameterTypes().length==0)
+				.findAny();
+		if (first.isEmpty()) {
+			return null;
+		}
+		return first.get();
+	}
+	
+	private Object createNoArgsConstructor(Class<?> clazz, Constructor<?> constructor, String beanName) {
+		try {
+			Object instance = constructor.newInstance();
 			//Autowrite 依赖注入简易版
 			initField(clazz, instance);
-			//告诉bean的名字
-			if (instance instanceof BeanNameAware ins) {
-				ins.setBeanName(beanName);
+			//回调
+			initAware(instance, beanName);
+			//前置处理
+			for (BeanPostProcess process : beanPostProcesseslist) {
+				instance = process.postProcessBeforeInitalizing(beanName, instance);
 			}
-			//初始化操作，因为我这个不走构造函数，初始化操作在这个接口里
-			if (instance instanceof InitalizingBean initalizingBean) {
-				initalizingBean.init();
+			//初始化
+			initHook(instance);
+			//后置处理
+			for (BeanPostProcess process : beanPostProcesseslist) {
+				instance = process.afterProcessBeforeInitalizing(beanName, instance);
 			}
-			
 			return instance;
-		} catch (InstantiationException | IllegalAccessException e) {
+		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
 	}
 	
-	private void initField(Class<?> clazz, Object instance) throws IllegalAccessException {
-		Field[] fields = clazz.getDeclaredFields();
-		//找到被Autowrite注释了的字段
-		for (Field field : fields) {
-			if (field.isAnnotationPresent(Autowrite.class)) {
-				field.setAccessible(true);
-				field.set(instance, getBean(field.getName()));
-			}
+	private void initHook(Object instance) {
+		//初始化
+		if (instance instanceof InitalizingBean initalizingBean) {
+			initalizingBean.afterPropertiesSet();
 		}
-		final var methods = clazz.getMethods();
+	}
+	
+	private void initAware(Object instance, String beanName) {
+		//回调
+		if (instance instanceof BeanNameAware ins) {
+			ins.setBeanName(beanName);
+		}
+	}
+	
+	
+	private void initField(Class<?> clazz, Object instance) throws IllegalAccessException {
+		//找到被Autowrite注释了的字段
+		final var fields = AnnotationUtil.annotationFields(clazz.getDeclaredFields(), Autowrite.class);
+		for (Field field : fields) {
+			field.setAccessible(true);
+			field.set(instance, getBean(field.getName()));
+		}
+		final var methods = AnnotationUtil.annotationMethods(clazz.getMethods(), Autowrite.class);
 		try {
 			for (Method method : methods) {
-				if (method.isAnnotationPresent(Autowrite.class)) {
-					var name = method.getName();
-					name = StringUtil.removeGetOrSet(name);
-					name = StringUtil.toLowerCase(name);
-					method.invoke(instance, getBean(name));
+				//基于set里面的参数类型进行自动装配
+				final var types = method.getParameterTypes();
+				for (Class<?> type : types) {
+					final var bean = getBean(StringUtil.toLowerCase(type.getSimpleName()));
+					method.invoke(instance, bean);
 				}
 			}
 		} catch (InvocationTargetException e) {
@@ -153,7 +223,6 @@ public class ApplicationContext implements Application {
 		
 	}
 	
-	//	}
 	@Override
 	public Object getBean(String beanName) {
 		//从bean信息池寻找这个bean
@@ -163,14 +232,13 @@ public class ApplicationContext implements Application {
 		} else {
 			//获取这个bean的描述，是单例还是多例
 			String scope = beanDefinition.getScope();
-			if (scope.equals(Scope.BeanScope.singleton.name())) {
-				Object bean = singletonObjects.get(beanName);
-				if (bean == null) {
-					Object o = createBean(beanName, beanDefinition);
-					singletonObjects.put(beanName, o);
-					return o;
+			if (scope.equals(Constant.SINGLETON)) {
+				var instance = singletonObjects.get(beanName);
+				if (instance == null) {
+					instance = createBean(beanName, beanDefinition);
+					singletonObjects.put(beanName, instance);
 				}
-				return bean;
+				return instance;
 			} else {
 				//这里是多例
 				return createBean(beanName, beanDefinition);
@@ -184,12 +252,11 @@ public class ApplicationContext implements Application {
 		final var beanDefinition = beanDefinitionMap.get(beanName);
 		Assert.requireNotNull(beanDefinition, new NullPointerException("没有那个bean"));
 		final var scope = beanDefinition.getScope();
-		if (scope.equals(Scope.BeanScope.singleton.name())) {
-			final var instance = (T) singletonObjects.get(beanName);
+		if (scope.equals(Constant.SINGLETON)) {
+			var instance = (T) singletonObjects.get(beanName);
 			if (instance == null) {
-				final var bean = createBean(beanName, beanDefinition);
-				singletonObjects.put(beanName, bean);
-				return (T) bean;
+				instance = (T) createBean(beanName, beanDefinition);
+				singletonObjects.put(beanName, instance);
 			}
 			return instance;
 		} else {
@@ -199,11 +266,13 @@ public class ApplicationContext implements Application {
 	}
 	
 	@Override
+	public <T> List<T> getBean(Class<T> type) {
+		return null;
+	}
+	
+	@Override
 	public BeanDefinition getBeanDefinition(Class<?> type) {
-		final var definition = beanDefinitionMap.values()
-				.stream()
-				.filter(beanDefinition -> beanDefinition.getType() == type)
-				.findFirst();
+		final var definition = beanDefinitionMap.values().stream().filter(beanDefinition -> beanDefinition.getType() == type).findFirst();
 		return definition.orElse(null);
 	}
 	

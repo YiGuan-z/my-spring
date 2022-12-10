@@ -2,12 +2,19 @@ package com.cqsd.spring.service;
 
 
 import com.cqsd.spring.annotation.Component;
+import com.cqsd.spring.face.hook.InitalizingBean;
 
 @Component
-public class OrderService {
+public class OrderService implements InitalizingBean {
 	{
 		System.out.println("我是单例OrderService我初始化了");
 	}
+	
+	@Override
+	public void afterPropertiesSet() {
+		System.out.println("我是orderService被initlaizingBean接口初始化了");
+	}
+	
 	public void test(){
 		System.out.println("我是单例OrderService我被测试了");
 	}

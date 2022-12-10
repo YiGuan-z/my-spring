@@ -8,10 +8,8 @@ import com.cqsd.spring.face.hook.BeanNameAware;
 import com.cqsd.spring.face.hook.InitalizingBean;
 
 @Component("userService")
-@Scope(
-		Scope.BeanScope.prototypes
-)
-public class UserService implements BeanNameAware, InitalizingBean {
+@Scope("prototypes")
+public class UserService implements BeanNameAware, InitalizingBean,UserInterface {
 //	@Autowrite
 	private OrderService orderService;
 	private String beanName;
@@ -19,11 +17,17 @@ public class UserService implements BeanNameAware, InitalizingBean {
 		System.out.println(orderService);
 		orderService.test();
 	}
-	@Autowrite
-	public UserService setOrderService(OrderService orderService) {
+	
+	public UserService(OrderService orderService) {
 		this.orderService = orderService;
-		return this;
+		System.out.println("我被my-spring初始化了");
 	}
+	
+//	@Autowrite
+//	public UserService setOrderService(OrderService orderService) {
+//		this.orderService = orderService;
+//		return this;
+//	}
 	
 	@Override
 	public void setBeanName(String beanName) {
@@ -31,7 +35,8 @@ public class UserService implements BeanNameAware, InitalizingBean {
 	}
 	
 	@Override
-	public void init() {
+	public void afterPropertiesSet() {
 		System.out.println("用户在做初始化");
+		System.out.println(this);
 	}
 }
