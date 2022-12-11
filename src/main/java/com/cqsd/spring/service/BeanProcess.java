@@ -1,7 +1,7 @@
 package com.cqsd.spring.service;
 
-import com.cqsd.spring.annotation.Component;
-import com.cqsd.spring.face.hook.BeanPostProcess;
+import com.cqsd.spring.core.annotation.Component;
+import com.cqsd.spring.core.face.hook.BeanPostProcess;
 
 import java.lang.reflect.Proxy;
 

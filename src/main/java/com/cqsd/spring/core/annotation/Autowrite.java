@@ -1,4 +1,4 @@
-package com.cqsd.spring.annotation;
+package com.cqsd.spring.core.annotation;
 
 import java.lang.annotation.*;
 

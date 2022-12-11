@@ -1,8 +1,8 @@
 package com.cqsd.spring.service;
 
 
-import com.cqsd.spring.annotation.Component;
-import com.cqsd.spring.face.hook.InitalizingBean;
+import com.cqsd.spring.core.annotation.Component;
+import com.cqsd.spring.core.face.hook.InitalizingBean;
 
 @Component
 public class OrderService implements InitalizingBean {

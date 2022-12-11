@@ -1,4 +1,4 @@
-package com.cqsd.spring.util;
+package com.cqsd.spring.core.util;
 
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;

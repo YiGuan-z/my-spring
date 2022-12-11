@@ -1,4 +1,4 @@
-package com.cqsd.spring.util;
+package com.cqsd.spring.core.util;
 
 import java.util.List;
 import java.util.Map;

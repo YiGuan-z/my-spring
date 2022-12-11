@@ -1,12 +1,12 @@
-package com.cqsd.spring;
+package com.cqsd.spring.core;
 
 
-import com.cqsd.spring.annotation.*;
-import com.cqsd.spring.face.Application;
-import com.cqsd.spring.face.hook.BeanNameAware;
-import com.cqsd.spring.face.hook.BeanPostProcess;
-import com.cqsd.spring.face.hook.InitalizingBean;
-import com.cqsd.spring.util.*;
+import com.cqsd.spring.core.annotation.*;
+import com.cqsd.spring.core.face.Application;
+import com.cqsd.spring.core.face.hook.BeanNameAware;
+import com.cqsd.spring.core.face.hook.BeanPostProcess;
+import com.cqsd.spring.core.face.hook.InitalizingBean;
+import com.cqsd.spring.core.util.*;
 import sun.misc.Unsafe;
 
 import java.io.File;
@@ -24,7 +24,7 @@ public class ApplicationContext implements Application {
 	private final Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>();
 	//单例池
 	private final Map<String, Object> singletonObjects = new ConcurrentHashMap<>();
-	private final List<BeanPostProcess> beanPostProcesseslist = new ArrayList<>();
+	private final List<BeanPostProcess> beanPostProcesslist = new ArrayList<>();
 	private final static Unsafe unsafe = UnsafeUtil.getUnsafe();
 	
 	/**
@@ -76,7 +76,6 @@ public class ApplicationContext implements Application {
 							var beanName = component.value();
 							//设置bean name 如果没有设置beanName就将类名的第一个字母小写
 							if ("".equals(beanName)) {
-//								beanName = Introspector.decapitalize(clazz.getSimpleName());
 								beanName = StringUtil.toLowerCase(clazz.getSimpleName());
 							}
 							//设置作用域 默认是单例
@@ -106,7 +105,7 @@ public class ApplicationContext implements Application {
 			}
 			//如果是bean对象处理器
 			if (BeanPostProcess.class.isAssignableFrom(beanDefinition.getType())) {
-				beanPostProcesseslist.add((BeanPostProcess) getBean(beanName));
+				beanPostProcesslist.add((BeanPostProcess) getBean(beanName));
 			}
 		}
 	}
@@ -114,20 +113,18 @@ public class ApplicationContext implements Application {
 	public Object createBean(String beanName, BeanDefinition definition) {
 		Class<?> clazz = definition.getType();
 		//检查是否有无参构造
-		final Constructor<?> noArgs = findNoArgsConstructor(clazz);
+		final Constructor<?> noArgs = ConstructorUtil.findNoArgsConstructor(clazz);
 		if (noArgs != null) {
 			return createNoArgsConstructor(clazz, noArgs, beanName);
 		} else {
 			//这里是有参构造
-			final Constructor<?> constructor = findMaxArgsConstructor(clazz);
-			return createAllArgsConstructor(constructor);
-
-//			throw new RuntimeException("有参构造尚未完成");
+			final Constructor<?> constructor = ConstructorUtil.findAllArgsConstructor(clazz);
+			return createAllArgsConstructor(constructor,beanName);
 		}
 		
 	}
 	
-	private Object createAllArgsConstructor(Constructor<?> constructor) {
+	private Object createAllArgsConstructor(Constructor<?> constructor,String beanName) {
 		Object instance;
 		try {
 			final var types = constructor.getParameterTypes();
@@ -136,30 +133,13 @@ public class ApplicationContext implements Application {
 					.map(this::getBean)
 					.toArray();
 			instance = constructor.newInstance(args);
+			for (BeanPostProcess process : beanPostProcesslist) {
+				instance = process.afterProcessBeforeInitalizing(beanName, instance);
+			}
 		} catch (Exception e) {
-			throw new NullPointerException("没有那个bean");
+			throw new NullPointerException(String.format("找不到或没有那个bean\r\t%s", e.getMessage()));
 		}
 		return instance;
-	}
-	
-	private Constructor<?> findMaxArgsConstructor(Class<?> clazz) {
-		final var constructor = Arrays.stream(clazz.getConstructors())
-				.max(Comparator.comparing(Constructor::getParameterCount));
-		if (constructor.isEmpty()) {
-			return null;
-		}
-		return constructor.get();
-		
-	}
-	
-	private Constructor<?> findNoArgsConstructor(Class<?> clazz) {
-		final var first = Arrays.stream(clazz.getDeclaredConstructors())
-				.filter(constructor -> constructor.getParameterTypes().length==0)
-				.findAny();
-		if (first.isEmpty()) {
-			return null;
-		}
-		return first.get();
 	}
 	
 	private Object createNoArgsConstructor(Class<?> clazz, Constructor<?> constructor, String beanName) {
@@ -170,13 +150,13 @@ public class ApplicationContext implements Application {
 			//回调
 			initAware(instance, beanName);
 			//前置处理
-			for (BeanPostProcess process : beanPostProcesseslist) {
+			for (BeanPostProcess process : beanPostProcesslist) {
 				instance = process.postProcessBeforeInitalizing(beanName, instance);
 			}
 			//初始化
 			initHook(instance);
 			//后置处理
-			for (BeanPostProcess process : beanPostProcesseslist) {
+			for (BeanPostProcess process : beanPostProcesslist) {
 				instance = process.afterProcessBeforeInitalizing(beanName, instance);
 			}
 			return instance;

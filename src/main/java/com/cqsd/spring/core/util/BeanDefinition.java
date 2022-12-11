@@ -1,4 +1,4 @@
-package com.cqsd.spring.util;
+package com.cqsd.spring.core.util;
 
 public class BeanDefinition {
     private Class<?> type;

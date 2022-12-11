@@ -1,6 +1,6 @@
-package com.cqsd.spring.face;
+package com.cqsd.spring.core.face;
 
-import com.cqsd.spring.util.BeanDefinition;
+import com.cqsd.spring.core.util.BeanDefinition;
 
 import java.util.List;
 

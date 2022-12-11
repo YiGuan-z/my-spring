@@ -1,4 +1,4 @@
-package com.cqsd.spring.face;
+package com.cqsd.spring.core.face;
 
 /**
  * @author caseycheng

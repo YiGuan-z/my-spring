@@ -1,17 +1,18 @@
 package com.cqsd.spring.service;
 
 
-import com.cqsd.spring.annotation.Autowrite;
-import com.cqsd.spring.annotation.Component;
-import com.cqsd.spring.annotation.Scope;
-import com.cqsd.spring.face.hook.BeanNameAware;
-import com.cqsd.spring.face.hook.InitalizingBean;
+import com.cqsd.spring.core.annotation.Component;
+import com.cqsd.spring.core.annotation.Scope;
+import com.cqsd.spring.core.annotation.Value;
+import com.cqsd.spring.core.face.hook.BeanNameAware;
+import com.cqsd.spring.core.face.hook.InitalizingBean;
 
 @Component("userService")
 @Scope("prototypes")
 public class UserService implements BeanNameAware, InitalizingBean,UserInterface {
 //	@Autowrite
-	private OrderService orderService;
+	private final OrderService orderService;
+	@Value("${hello}")
 	private String beanName;
 	public void test(){
 		System.out.println(orderService);

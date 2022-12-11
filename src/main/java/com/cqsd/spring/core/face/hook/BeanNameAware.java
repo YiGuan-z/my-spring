@@ -1,4 +1,4 @@
-package com.cqsd.spring.face.hook;
+package com.cqsd.spring.core.face.hook;
 
 /**
  * 通知bean，告诉它的名字
