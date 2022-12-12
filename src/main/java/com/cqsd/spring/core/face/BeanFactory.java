@@ -2,8 +2,6 @@ package com.cqsd.spring.core.face;
 
 import com.cqsd.spring.core.util.BeanDefinition;
 
-import java.util.List;
-
 /**
  * @author caseycheng
  * @date 2022/12/9-19:52
@@ -13,7 +11,7 @@ public interface BeanFactory {
 	
 	<T> T getBean(String beanName, Class<T> type);
 	
-	<T> List<T> getBean(Class<T> type);
+	<T> T getBean(Class<T> type);
 	
 	BeanDefinition getBeanDefinition(Class<?> type);
 	

@@ -47,8 +47,24 @@ public abstract class StringUtil {
 		return name;
 	}
 	
+	//如果有值为true，无值为false
 	public static boolean hasLength(String str) {
 		return str != null && str.length() != 0;
+	}
+	//判断是否是${}开始的表达式
+	public static boolean isInjectExpress(String express) {
+		final var check = hasLength(express);
+		//如果有值
+		if (check) {
+			final var chars = express.toCharArray();
+			
+			
+			
+		} else {
+			throw new NullPointerException("缺少表达式");
+		}
+		
+		return false;
 	}
 	
 	@FunctionalInterface

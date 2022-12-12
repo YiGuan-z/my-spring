@@ -10,6 +10,8 @@ import com.cqsd.spring.core.util.*;
 import sun.misc.Unsafe;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -62,7 +64,7 @@ public class ApplicationContext implements Application {
 				String fileName = f.getAbsolutePath();
 				//定位包路径
 				fileName = fileName.substring(fileName.indexOf(packageName)).replace('/', '.');
-				//查找class文件
+				//找到class文件并加载
 				if (fileName.endsWith(".class")) {
 					try {
 						//获取类路径
@@ -114,17 +116,39 @@ public class ApplicationContext implements Application {
 		Class<?> clazz = definition.getType();
 		//检查是否有无参构造
 		final Constructor<?> noArgs = ConstructorUtil.findNoArgsConstructor(clazz);
+		Object instance;
 		if (noArgs != null) {
-			return createNoArgsConstructor(clazz, noArgs, beanName);
+			instance = createNoArgsConstructor(clazz, noArgs, beanName);
 		} else {
 			//这里是有参构造
 			final Constructor<?> constructor = ConstructorUtil.findAllArgsConstructor(clazz);
-			return createAllArgsConstructor(constructor,beanName);
+			instance = createAllArgsConstructor(constructor, beanName);
 		}
+		//属性注入
+		initProperties(instance);
 		
+		
+		return instance;
 	}
 	
-	private Object createAllArgsConstructor(Constructor<?> constructor,String beanName) {
+	private void initProperties(Object instance) {
+		try (final var resource = Application.class.getClassLoader().getResourceAsStream("application.properties")) {
+			//获取待注入的对象
+			final var fieldList = AnnotationUtil.annotationFields(instance.getClass().getDeclaredFields(), Value.class);
+			Properties properties = new Properties();
+			properties.load(resource);
+			for (Field field : fieldList) {
+				 var express= field.getDeclaredAnnotation(Value.class).value();
+				final var path = express.substring(express.indexOf("${"), express.indexOf("}"));
+				final var value = properties.get(path);
+				field.set(instance,value);
+			}
+		} catch (Exception ignored) {
+		
+		}
+	}
+	
+	private Object createAllArgsConstructor(Constructor<?> constructor, String beanName) {
 		Object instance;
 		try {
 			final var types = constructor.getParameterTypes();
@@ -207,24 +231,22 @@ public class ApplicationContext implements Application {
 	public Object getBean(String beanName) {
 		//从bean信息池寻找这个bean
 		BeanDefinition beanDefinition = beanDefinitionMap.get(beanName);
-		if (beanDefinition == null) {
-			throw new NullPointerException();
-		} else {
-			//获取这个bean的描述，是单例还是多例
-			String scope = beanDefinition.getScope();
-			if (scope.equals(Constant.SINGLETON)) {
-				var instance = singletonObjects.get(beanName);
-				if (instance == null) {
-					instance = createBean(beanName, beanDefinition);
-					singletonObjects.put(beanName, instance);
-				}
-				return instance;
-			} else {
-				//这里是多例
-				return createBean(beanName, beanDefinition);
+		Assert.requireNotNull(beanDefinition, new NullPointerException("没有那个bean"));
+		//获取这个bean的描述，是单例还是多例
+		String scope = beanDefinition.getScope();
+		if (scope.equals(Constant.SINGLETON)) {
+			var instance = singletonObjects.get(beanName);
+			if (instance == null) {
+				instance = createBean(beanName, beanDefinition);
+				singletonObjects.put(beanName, instance);
 			}
+			return instance;
+		} else {
+			//这里是多例
+			return createBean(beanName, beanDefinition);
 		}
 	}
+	
 	
 	@SuppressWarnings({"unchecked"})
 	@Override
@@ -233,26 +255,47 @@ public class ApplicationContext implements Application {
 		Assert.requireNotNull(beanDefinition, new NullPointerException("没有那个bean"));
 		final var scope = beanDefinition.getScope();
 		if (scope.equals(Constant.SINGLETON)) {
-			var instance = (T) singletonObjects.get(beanName);
+			var instance = singletonObjects.get(beanName);
 			if (instance == null) {
-				instance = (T) createBean(beanName, beanDefinition);
+				instance = createBean(beanName, beanDefinition);
 				singletonObjects.put(beanName, instance);
 			}
-			return instance;
+			return (T) instance;
 		} else {
 			//多例
 			return (T) createBean(beanName, beanDefinition);
 		}
 	}
 	
+	@SuppressWarnings({"unchecked"})
 	@Override
-	public <T> List<T> getBean(Class<T> type) {
-		return null;
+	public <T> T getBean(Class<T> type) {
+//		final Map<? extends Class<?>, BeanDefinition> map = beanDefinitionMap.values().stream()
+//				.collect(Collectors.toMap(BeanDefinition::getType, beanDefinition -> beanDefinition));
+//		final var definition = map.get(type);
+		final var definition = getBeanDefinition(type);
+		Assert.requireNotNull(definition, new NullPointerException("没有那个bean"));
+		final var scope = definition.getScope();
+		final var beanName = definition.getName();
+		if (scope.equals(Constant.SINGLETON)) {
+			var instance = singletonObjects.get(definition.getName());
+			if (instance == null) {
+				instance = createBean(beanName, definition);
+				singletonObjects.put(beanName, instance);
+			}
+			return (T) instance;
+		} else {
+			return (T) createBean(beanName, definition);
+		}
 	}
 	
 	@Override
 	public BeanDefinition getBeanDefinition(Class<?> type) {
-		final var definition = beanDefinitionMap.values().stream().filter(beanDefinition -> beanDefinition.getType() == type).findFirst();
+		final var definition = beanDefinitionMap
+				.values()
+				.stream()
+				.filter(beanDefinition -> beanDefinition.getType() == type)
+				.findFirst();
 		return definition.orElse(null);
 	}
 	
