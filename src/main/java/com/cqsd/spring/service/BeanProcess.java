@@ -21,17 +21,17 @@ public class BeanProcess implements BeanPostProcess {
 	
 	@Override
 	public Object afterProcessBeforeInitalizing(String beanName, Object bean) {
-		if (beanName.equals("userService")){
-			final var newProxyInstance = Proxy.newProxyInstance(
-					BeanProcess.class.getClassLoader(),
-					bean.getClass().getInterfaces(),
-					(proxy, method, args) -> {
-						System.out.println("小夫，我要进来了");
-						return method.invoke(bean,args);
-					}
-			);
-			return newProxyInstance;
-		}
+//		if (beanName.equals("userService")){
+//			final var newProxyInstance = Proxy.newProxyInstance(
+//					BeanProcess.class.getClassLoader(),
+//					bean.getClass().getInterfaces(),
+//					(proxy, method, args) -> {
+//						System.out.println("小夫，我要进来了");
+//						return method.invoke(bean,args);
+//					}
+//			);
+//			return newProxyInstance;
+//		}
 		return bean;
 	}
 }

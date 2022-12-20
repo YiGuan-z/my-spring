@@ -132,16 +132,19 @@ public class ApplicationContext implements Application {
 	}
 	
 	private void initProperties(Object instance) {
+		//TODO 属性注入
 		try (final var resource = Application.class.getClassLoader().getResourceAsStream("application.properties")) {
 			//获取待注入的对象
 			final var fieldList = AnnotationUtil.annotationFields(instance.getClass().getDeclaredFields(), Value.class);
-			Properties properties = new Properties();
-			properties.load(resource);
-			for (Field field : fieldList) {
-				 var express= field.getDeclaredAnnotation(Value.class).value();
-				final var path = express.substring(express.indexOf("${"), express.indexOf("}"));
-				final var value = properties.get(path);
-				field.set(instance,value);
+			if (fieldList.size()!=0) {
+				Properties properties = new Properties();
+				properties.load(resource);
+				for (Field field : fieldList) {
+					var express = field.getDeclaredAnnotation(Value.class).value();
+					final var path = express.substring(express.indexOf("${"), express.indexOf("}"));
+					final var value = properties.get(path);
+					field.set(instance, value);
+				}
 			}
 		} catch (Exception ignored) {
 		
