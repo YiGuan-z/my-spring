@@ -23,4 +23,12 @@ public abstract class AnnotationUtil {
 		return Arrays.stream(methods).filter(method -> method.isAnnotationPresent(annotation))
 				.collect(Collectors.toList());
 	}
+	
+	public static boolean annotationClass(Class<?> type, Class<? extends Annotation> annotation) {
+		return type.isAnnotationPresent(annotation);
+	}
+	
+	public static<T extends Annotation> T getAnnotation(Class<?> type, Class<T> componentClass) {
+		return type.getAnnotation(componentClass);
+	}
 }

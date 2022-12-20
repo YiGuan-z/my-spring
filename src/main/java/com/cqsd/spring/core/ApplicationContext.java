@@ -9,9 +9,7 @@ import com.cqsd.spring.core.face.hook.InitalizingBean;
 import com.cqsd.spring.core.util.*;
 import sun.misc.Unsafe;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -28,6 +26,8 @@ public class ApplicationContext implements Application {
 	private final Map<String, Object> singletonObjects = new ConcurrentHashMap<>();
 	private final List<BeanPostProcess> beanPostProcesslist = new ArrayList<>();
 	private final static Unsafe unsafe = UnsafeUtil.getUnsafe();
+	private final static ClassLoader classLoader = ApplicationContext.class.getClassLoader();
+	private final static Properties appProperties = new Properties();
 	
 	/**
 	 * 对配置类进行初始化操作，找到上面定义的包扫描路径扫描出Bean组件，优先创建出来
@@ -36,6 +36,8 @@ public class ApplicationContext implements Application {
 	 */
 	
 	public ApplicationContext(Class<?> configClass) {
+		//使用字符流来保证中文不会乱码
+		initProprties();
 		this.configClass = configClass;
 		if (this.configClass.isAnnotationPresent(ComponentScans.class)) {
 			ComponentScans scans = this.configClass.getAnnotation(ComponentScans.class);
@@ -47,6 +49,17 @@ public class ApplicationContext implements Application {
 		}
 		
 		
+	}
+	
+	private static void initProprties() {
+		final var url = classLoader.getResource("application.properties");
+		if (url != null) {
+			try (final var resource = new FileReader(url.getFile())) {
+				appProperties.load(resource);
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
 	}
 	
 	private void init(String path) {
@@ -133,22 +146,27 @@ public class ApplicationContext implements Application {
 	
 	private void initProperties(Object instance) {
 		//TODO 属性注入
-		try (final var resource = Application.class.getClassLoader().getResourceAsStream("application.properties")) {
+	
+		try {
 			//获取待注入的对象
 			final var fieldList = AnnotationUtil.annotationFields(instance.getClass().getDeclaredFields(), Value.class);
-			if (fieldList.size()!=0) {
-				Properties properties = new Properties();
-				properties.load(resource);
+			if (fieldList.size() != 0) {
 				for (Field field : fieldList) {
 					var express = field.getDeclaredAnnotation(Value.class).value();
-					final var path = express.substring(express.indexOf("${"), express.indexOf("}"));
-					final var value = properties.get(path);
+					final var path = StringUtil.subExpr(express);
+					var value = appProperties.get(path);
+					if (StringUtil.isExtra(express)) {
+						//有额外的表达式需要拼接
+						
+					}
+					field.setAccessible(true);
 					field.set(instance, value);
 				}
 			}
-		} catch (Exception ignored) {
-		
+		} catch (IllegalAccessException e) {
+			throw new RuntimeException(e);
 		}
+		
 	}
 	
 	private Object createAllArgsConstructor(Constructor<?> constructor, String beanName) {
@@ -156,7 +174,22 @@ public class ApplicationContext implements Application {
 		try {
 			final var types = constructor.getParameterTypes();
 			final var args = Arrays.stream(types)
-					.map(type -> StringUtil.toLowerCase(type.getSimpleName()))
+					.map(type -> {
+						String ret;
+						//都给容器管理了怎么可能没有Component.class注解 我智障了
+//						if (AnnotationUtil.annotationClass(type, Component.class)) {
+						//获取组件上的beanName
+						final var value = AnnotationUtil.getAnnotation(type, Component.class).value();
+						if (value.equals("")) {
+							ret = StringUtil.toLowerCase(type.getSimpleName());
+						} else {
+							ret = value;
+						}
+//						} else {
+//							ret = StringUtil.toLowerCase(type.getSimpleName());
+//						}
+						return ret;
+					})
 					.map(this::getBean)
 					.toArray();
 			instance = constructor.newInstance(args);

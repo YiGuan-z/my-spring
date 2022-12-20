@@ -67,6 +67,22 @@ public abstract class StringUtil {
 		return false;
 	}
 	
+	public static String subExpr(String str) {
+		return str.substring(str.indexOf("${")+2,str.indexOf("}"));
+	}
+	
+	/**
+	 * 这个方法检查是否有表达式外部的字符
+	 * @param express 1${hello}2
+	 * @return
+	 */
+	public static boolean isExtra(String express) {
+		boolean ret =false;
+		ret |= express.startsWith("${");
+		ret &= express.endsWith("}");
+		return ret;
+	}
+	
 	@FunctionalInterface
 	public interface SFunction<T, R> {
 		R apply(T t);
