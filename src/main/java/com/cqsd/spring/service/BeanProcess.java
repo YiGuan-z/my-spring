@@ -14,20 +14,27 @@ import java.lang.reflect.Proxy;
 public class BeanProcess implements BeanPostProcess {
 	@Override
 	public Object postProcessBeforeInitalizing(String beanName, Object bean) {
-		System.out.println(beanName+"初始化前");
+		System.out.println(beanName + "初始化前");
 		System.out.println();
 		return bean;
 	}
 	
 	@Override
 	public Object afterProcessBeforeInitalizing(String beanName, Object bean) {
-//		if (beanName.equals("userService")){
+//		if (beanName.equals("userService")) {
 //			final var newProxyInstance = Proxy.newProxyInstance(
 //					BeanProcess.class.getClassLoader(),
 //					bean.getClass().getInterfaces(),
 //					(proxy, method, args) -> {
+//						Object o = null;
 //						System.out.println("小夫，我要进来了");
-//						return method.invoke(bean,args);
+//						try {
+//							o = method.invoke(args);
+//
+//						} catch (Exception ignore) {
+//							//告诉mysql 回滚数据
+//						}
+//						return o;
 //					}
 //			);
 //			return newProxyInstance;

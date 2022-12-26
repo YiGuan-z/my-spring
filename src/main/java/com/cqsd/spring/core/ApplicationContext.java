@@ -3,6 +3,7 @@ package com.cqsd.spring.core;
 
 import com.cqsd.spring.core.annotation.*;
 import com.cqsd.spring.core.face.Application;
+import com.cqsd.spring.core.face.hook.ApplicationAware;
 import com.cqsd.spring.core.face.hook.BeanNameAware;
 import com.cqsd.spring.core.face.hook.BeanPostProcess;
 import com.cqsd.spring.core.face.hook.InitalizingBean;
@@ -85,7 +86,6 @@ public class ApplicationContext implements Application {
 						Class<?> clazz = classLoader.loadClass(classname);
 						//如果是一个组件
 						if (clazz.isAnnotationPresent(Component.class)) {
-							
 							final var beanDefinitionBuilder = Builder.builder(BeanDefinition::new);
 							final var component = clazz.getAnnotation(Component.class);
 							var beanName = component.value();
@@ -121,6 +121,10 @@ public class ApplicationContext implements Application {
 			//如果是bean对象处理器
 			if (BeanPostProcess.class.isAssignableFrom(beanDefinition.getType())) {
 				beanPostProcesslist.add((BeanPostProcess) getBean(beanName));
+			}
+			if (ApplicationAware.class.isAssignableFrom(beanDefinition.getType())){
+				final var bean = getBean(beanName);
+				((ApplicationAware) bean).setApplication(this);
 			}
 		}
 	}

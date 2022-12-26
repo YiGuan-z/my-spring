@@ -1,7 +1,6 @@
 package com.cqsd.spring.service;
 
 
-import com.cqsd.spring.core.annotation.Autowrite;
 import com.cqsd.spring.core.annotation.Component;
 import com.cqsd.spring.core.annotation.Scope;
 import com.cqsd.spring.core.annotation.Value;
