@@ -3,10 +3,11 @@ package com.cqsd.spring.core;
 
 import com.cqsd.spring.core.annotation.*;
 import com.cqsd.spring.core.face.Application;
-import com.cqsd.spring.core.face.hook.ApplicationAware;
-import com.cqsd.spring.core.face.hook.BeanNameAware;
+import com.cqsd.spring.core.face.hook.aware.ApplicationAware;
+import com.cqsd.spring.core.face.hook.aware.BeanNameAware;
 import com.cqsd.spring.core.face.hook.BeanPostProcess;
 import com.cqsd.spring.core.face.hook.InitalizingBean;
+import com.cqsd.spring.core.model.BeanDefinition;
 import com.cqsd.spring.core.util.*;
 import sun.misc.Unsafe;
 
@@ -118,7 +119,7 @@ public class ApplicationContext implements Application {
 				Object bean = createBean(beanName, beanDefinition);
 				singletonObjects.put(beanName, bean);
 			}
-			//如果是bean对象处理器
+			//如果是bean对象处理器就立即实例化
 			if (BeanPostProcess.class.isAssignableFrom(beanDefinition.getType())) {
 				beanPostProcesslist.add((BeanPostProcess) getBean(beanName));
 			}
@@ -141,6 +142,7 @@ public class ApplicationContext implements Application {
 			final Constructor<?> constructor = ConstructorUtil.findAllArgsConstructor(clazz);
 			instance = createAllArgsConstructor(constructor, beanName);
 		}
+//		initAware(instance, definition.getName());
 		//属性注入
 		initProperties(instance);
 		
@@ -157,11 +159,12 @@ public class ApplicationContext implements Application {
 			if (fieldList.size() != 0) {
 				for (Field field : fieldList) {
 					var express = field.getDeclaredAnnotation(Value.class).value();
-					final var path = StringUtil.subExpr(express);
-					var value = appProperties.get(path);
+					Object value;
 					if (StringUtil.isExtra(express)) {
-						//有额外的表达式需要拼接
-						
+						final var path = StringUtil.subExpr(express);
+						value=appProperties.get(path);
+					}else {
+						value=Transform.transObject(express,field.getType());
 					}
 					field.setAccessible(true);
 					field.set(instance, value);
@@ -189,9 +192,6 @@ public class ApplicationContext implements Application {
 						} else {
 							ret = value;
 						}
-//						} else {
-//							ret = StringUtil.toLowerCase(type.getSimpleName());
-//						}
 						return ret;
 					})
 					.map(this::getBean)
@@ -200,6 +200,8 @@ public class ApplicationContext implements Application {
 			for (BeanPostProcess process : beanPostProcesslist) {
 				instance = process.afterProcessBeforeInitalizing(beanName, instance);
 			}
+			initAware(instance, beanName);
+			
 		} catch (Exception e) {
 			throw new NullPointerException(String.format("找不到或没有那个bean\r\t%s", e.getMessage()));
 		}
@@ -341,6 +343,7 @@ public class ApplicationContext implements Application {
 	
 	@Override
 	public BeanDefinition getBeanDefinition(String beanName) {
+		Assert.requireNotNull(beanName);
 		return beanDefinitionMap.get(beanName);
 	}
 	

@@ -51,13 +51,13 @@ public abstract class StringUtil {
 	public static boolean hasLength(String str) {
 		return str != null && str.length() != 0;
 	}
+	
 	//判断是否是${}开始的表达式
 	public static boolean isInjectExpress(String express) {
 		final var check = hasLength(express);
 		//如果有值
 		if (check) {
 			final var chars = express.toCharArray();
-			
 			
 			
 		} else {
@@ -68,19 +68,32 @@ public abstract class StringUtil {
 	}
 	
 	public static String subExpr(String str) {
-		return str.substring(str.indexOf("${")+2,str.indexOf("}"));
+		return str.substring(str.indexOf("${") + 2, str.indexOf("}"));
 	}
 	
 	/**
 	 * 这个方法检查是否有表达式外部的字符
+	 *
 	 * @param express 1${hello}2
 	 * @return
 	 */
 	public static boolean isExtra(String express) {
-		boolean ret =false;
-		ret |= express.startsWith("${");
-		ret &= express.endsWith("}");
-		return ret;
+		boolean ret = false;
+		try {
+			ret |= express.startsWith("${");
+			ret &= express.endsWith("}");
+			return ret;
+		}catch (Exception e){
+			return false;
+		}
+	}
+	
+	public static String getExtra(String express) {
+		if (isExtra(express)) {
+			final var expr = express.substring(express.indexOf("${"), express.indexOf("}"));
+			return express.substring(expr.indexOf(expr));
+		}
+		return express;
 	}
 	
 	@FunctionalInterface

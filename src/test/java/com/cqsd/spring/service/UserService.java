@@ -4,8 +4,8 @@ package com.cqsd.spring.service;
 import com.cqsd.spring.core.annotation.Component;
 import com.cqsd.spring.core.annotation.Scope;
 import com.cqsd.spring.core.annotation.Value;
-import com.cqsd.spring.core.face.hook.BeanNameAware;
 import com.cqsd.spring.core.face.hook.InitalizingBean;
+import com.cqsd.spring.core.face.hook.aware.BeanNameAware;
 
 @Component("userService")
 @Scope("prototypes")
@@ -16,12 +16,18 @@ public class UserService implements BeanNameAware, InitalizingBean, UserInterfac
 	private String beanName;
 	@Value("${hello}")
 	private String message;
+	@Value("wo")
+	private String ni;
+	@Value("1")
+	private Integer num;
 	
 	public void test() {
 		System.out.println(orderService);
 		orderService.test();
-		System.out.println(beanName);
-		System.out.println(message);
+		System.out.println("beanName = " + beanName);
+		System.out.println("message = " + message);
+		System.out.println("ni = " + ni);
+		System.out.println("num = " + num);
 	}
 	
 	public UserService(OrderService orderService) {
@@ -38,6 +44,7 @@ public class UserService implements BeanNameAware, InitalizingBean, UserInterfac
 	@Override
 	public void setBeanName(String beanName) {
 		this.beanName = beanName;
+		System.out.println(beanName);
 	}
 	
 	@Override

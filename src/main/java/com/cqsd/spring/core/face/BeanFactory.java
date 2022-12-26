@@ -1,6 +1,6 @@
 package com.cqsd.spring.core.face;
 
-import com.cqsd.spring.core.util.BeanDefinition;
+import com.cqsd.spring.core.model.BeanDefinition;
 
 /**
  * @author caseycheng
