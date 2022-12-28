@@ -22,18 +22,18 @@ abstract public class Assert {
 	}
 	
 	/**
-	 * 这里的方法运算为真就报错
+	 * 这里的方法运算为结果为true就报错
 	 * @param t
 	 * @param express
 	 * @param message
 	 * @param <T>
 	 */
-	public static <T>void assertFalse(T t,Predicate<T> express, String message) {
+	public static <T> void assertFalse(T t,Predicate<T> express, String message) {
 		if (express.test(t)) throw new RuntimeException(message);
 	}
 	
 	/**
-	 * 这里的方法运算为真就不报错
+	 * 这里的方法运算为true就不会报错
 	 * @param t
 	 * @param express
 	 * @param message

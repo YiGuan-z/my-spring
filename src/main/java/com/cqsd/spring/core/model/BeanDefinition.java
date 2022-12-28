@@ -1,8 +1,14 @@
 package com.cqsd.spring.core.model;
 
+/**
+ * 一个bean对象的元信息
+ */
 public class BeanDefinition {
+    //这个bean的类型
     private Class<?> type;
+    //这个bean的作用域
     private String scope;
+    //这个bean被分配到的名字/标识
     private String name;
 
     public Class<?> getType() {

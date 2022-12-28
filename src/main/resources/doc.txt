@@ -1,0 +1,18 @@
+Achieved:
+    @Autowrite              自动注入bean对象完成 可注入的有方法和字段
+    @Value                  用于对字段进行注入,当使用${xxx}表达式的时候,会从当前环境中获取这个变量并设置到字段中,如果没有使用${}就会使用几个常见的类型将值设置到字段中
+    @Scope                  设置bean的作用域,没有被注释就是单例,注释后不写值也是单例,只有里面的值不是singleton的时候才会是多例bean
+    @Component              标识当前对象是一个bean对象
+    @ComponentScan          配置包扫描路径
+    @ComponentScans         配置包扫描路径集合
+    @ApplicationBoot        标识这是个Application,没有被这个注解标记的类无法启动
+    @ApplicationConfig      配置JavaConfig TODO JavaConfig功能未完成
+    @ApplicationConfigs     配置JavaConfig集合 TODO JavaConfig功能未完成
+    @ApplicationConfigFile  配置应用程序上下文使用的配置文件
+
+bugs:
+    1.对父类字段进行属性注入将无法生效,因为不会一次获取到该类中所有字段,父类需要调用getSuperClass方法来获取父类字段.
+issues:
+    1.JavaConfig未完成
+    2.ApplicationConfig除了标记配置类后进行包扫描以外没有其它用处 现在只是定义个一个模型
+    3.越写越乱,或许应该考虑分包

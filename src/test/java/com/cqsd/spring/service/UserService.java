@@ -32,7 +32,7 @@ public class UserService implements BeanNameAware, InitalizingBean, UserInterfac
 	
 	public UserService(OrderService orderService) {
 		this.orderService = orderService;
-		System.out.println("我被my-spring初始化了");
+		System.out.println("我是UserService我被初始化了");
 	}
 
 //	@Autowrite

@@ -58,7 +58,7 @@ public abstract class StringUtil {
 		//如果有值
 		if (check) {
 			final var chars = express.toCharArray();
-			
+			//TODO 这东西好麻烦
 			
 		} else {
 			throw new NullPointerException("缺少表达式");

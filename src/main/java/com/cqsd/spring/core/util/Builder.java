@@ -1,7 +1,6 @@
 package com.cqsd.spring.core.util;
 
 import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -11,8 +10,7 @@ import java.util.function.Supplier;
  **/
 public class Builder<T> {
 	private final Supplier<T> constuctor;
-	private Consumer<T> head = t -> {
-	};
+	private Consumer<T> head = t -> {};
 	
 	private Builder(Supplier<T> constuctor) {
 		this.constuctor = constuctor;

@@ -2,13 +2,12 @@ package com.cqsd.spring.core.annotation;
 
 import java.lang.annotation.*;
 
+/**
+ * 标识这是一个Bean,value标识这个bean自定义的名字
+ */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 @Inherited
-/**
- * config bean name
- */
 public @interface Component {
-    //用于命名bean
     String value() default "";
 }
