@@ -7,6 +7,7 @@ import com.cqsd.spring.core.annotation.ApplicationConfigFile;
 import com.cqsd.spring.core.face.Application;
 import com.cqsd.spring.service.AppConfig;
 import com.cqsd.spring.service.UserInterface;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 //解析配置文件
 @ApplicationConfigFile("application.properties")
@@ -17,11 +18,16 @@ import org.junit.jupiter.api.Test;
 class ApplicationContextTest {
 	@Test
 	void testError() {
-		Application app = new ApplicationContext(AppConfig.class);
-		UserInterface service = (UserInterface) app.getBean("userService");
-		final var userSrvice = app.getBean("userService", UserInterface.class);
-		service.test();
-		userSrvice.test();
+		try {
+			Application app = new ApplicationContext(AppConfig.class);
+			UserInterface service = (UserInterface) app.getBean("userService");
+			final var userSrvice = app.getBean("userService", UserInterface.class);
+			service.test();
+			userSrvice.test();
+		}catch (RuntimeException e){
+			System.out.println("检测mainClass测试成功");
+		}
+		
 	}
 	@Test
 	void testIoc(){

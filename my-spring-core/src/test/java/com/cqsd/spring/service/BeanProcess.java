@@ -3,8 +3,6 @@ package com.cqsd.spring.service;
 import com.cqsd.spring.core.annotation.Component;
 import com.cqsd.spring.core.face.hook.BeanPostProcess;
 
-import java.lang.reflect.Proxy;
-
 /**
  * @author caseycheng
  * 可以在这里创建代理对象并返回
