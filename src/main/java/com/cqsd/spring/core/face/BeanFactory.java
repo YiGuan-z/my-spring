@@ -6,7 +6,7 @@ import com.cqsd.spring.core.model.BeanDefinition;
  * @author caseycheng
  * @date 2022/12/9-19:52
  **/
-public interface BeanFactory {
+public interface BeanFactory extends Factory{
 	Object getBean(String beanName);
 	
 	<T> T getBean(String beanName, Class<T> type);

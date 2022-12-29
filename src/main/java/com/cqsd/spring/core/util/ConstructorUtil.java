@@ -14,19 +14,14 @@ public abstract class ConstructorUtil {
 		final var optional = Arrays.stream(constructors)
 				.filter(constructor -> constructor.getParameterCount() == 0)
 				.findAny();
-		if (optional.isEmpty()) {
-			return null;
-		}
-		return optional.get();
+		return optional.orElse(null);
 	}
-	public static Constructor<?> findAllArgsConstructor(Class<?> clazz){
+	
+	public static Constructor<?> findAllArgsConstructor(Class<?> clazz) {
 		final var constructors = clazz.getDeclaredConstructors();
 		final var constructor = Arrays.stream(constructors)
 				.max(Comparator.comparing(Constructor::getParameterCount));
-		if (constructor.isEmpty()){
-			return null;
-		}
-		return constructor.get();
+		return constructor.orElse(null);
 	}
 	
 }

@@ -26,15 +26,8 @@ public class BeanProcess implements BeanPostProcess {
 //					BeanProcess.class.getClassLoader(),
 //					bean.getClass().getInterfaces(),
 //					(proxy, method, args) -> {
-//						Object o = null;
 //						System.out.println("小夫，我要进来了");
-//						try {
-//							o = method.invoke(args);
-//
-//						} catch (Exception ignore) {
-//							//告诉mysql 回滚数据
-//						}
-//						return o;
+//						return method.invoke(args);
 //					}
 //			);
 //			return newProxyInstance;

@@ -4,9 +4,7 @@ package com.cqsd.spring.core;
 import com.cqsd.spring.core.annotation.*;
 import com.cqsd.spring.core.face.Application;
 import com.cqsd.spring.core.face.hook.BeanPostProcess;
-import com.cqsd.spring.core.face.hook.InitalizingBean;
 import com.cqsd.spring.core.face.hook.aware.ApplicationAware;
-import com.cqsd.spring.core.face.hook.aware.BeanNameAware;
 import com.cqsd.spring.core.model.BeanDefinition;
 import com.cqsd.spring.core.util.*;
 import sun.misc.Unsafe;
@@ -14,31 +12,21 @@ import sun.misc.Unsafe;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.net.URL;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
 
-public class ApplicationContext implements Application {
+public class ApplicationContext extends AppFactory implements Application  {
 	//配置类集合
 	private final static List<Class<?>> configClass = new ArrayList<>();
 	//启动应用程序的类
 	private static Class<?> mainApplicationClass;
-	//bean信息池
-	private final Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>();
-	//单例池
-	private final Map<String, Object> singletonObjects = new ConcurrentHashMap<>();
-	//Bean处理器池
-	private final static List<BeanPostProcess> beanPostProcesslist = new ArrayList<>();
 	//日后可能会用到的东西
 	private final static Unsafe unsafe = UnsafeUtil.getUnsafe();
 	//类加载器
 	private final static ClassLoader classLoader = ApplicationContext.class.getClassLoader();
-	//环境配置
-	private final static Properties appProperties = new Properties();
 	
 	/**
 	 * 对配置类进行初始化操作，找到上面定义的包扫描路径扫描出Bean组件，优先创建出来
@@ -55,7 +43,8 @@ public class ApplicationContext implements Application {
 			//如果存在java配置集合就把集合找出来,添加到configList中
 			addJavaConfigClass();
 			//通过java配置来对class文件进行加载
-			for (Class<?> config : ApplicationContext.configClass) {
+			final var configList = getConfigClass();
+			for (Class<?> config : configList) {
 				if (config.isAnnotationPresent(ComponentScans.class)) {
 					ComponentScans scans = AnnotationUtil.getAnnotation(config, ComponentScans.class);
 					for (ComponentScan scan : scans.value()) {
@@ -178,261 +167,6 @@ public class ApplicationContext implements Application {
 			}
 		}
 	}
-	
-	public Object createBean(BeanDefinition definition) {
-		Class<?> clazz = definition.getType();
-		//检查是否有无参构造
-		final Constructor<?> noArgs = ConstructorUtil.findNoArgsConstructor(clazz);
-		Object instance;
-		if (noArgs != null) {
-			instance = createNoArgsConstructor(noArgs, definition.getName());
-		} else {
-			//这里是有参构造
-			final Constructor<?> constructor = ConstructorUtil.findAllArgsConstructor(clazz);
-			instance = createAllArgsConstructor(constructor, definition.getName());
-		}
-		
-		return instance;
-	}
-	
-	/**
-	 * 用于对实例中被{@link Value}注释了的字段进行注入
-	 * @param instance 需要被注入的实例对象
-	 */
-	private void initProperties(Object instance) {
-		
-		if (instance == null)
-			throw new NullPointerException("实例初始化错误");
-		try {
-			//获取待注入的对象
-			final var fieldList = AnnotationUtil.annotationFields(instance.getClass().getDeclaredFields(), Value.class);
-			if (fieldList.size() != 0) {
-				for (Field field : fieldList) {
-					var express = field.getDeclaredAnnotation(Value.class).value();
-					Object value;
-					if (StringUtil.isExtra(express)) {
-						final var path = StringUtil.subExpr(express);
-						value = appProperties.get(path);
-					} else {
-						value = Transform.transObject(express, field.getType());
-					}
-					field.setAccessible(true);
-					field.set(instance, value);
-				}
-			}
-		} catch (IllegalAccessException e) {
-			throw new RuntimeException(e);
-		}
-		
-	}
-	
-	/**
-	 * 全参构造器
-	 * @param constructor 寻找出来的全参构造器
-	 * @param beanName bean的Name
-	 * @return 构造完毕的对象
-	 */
-	private Object createAllArgsConstructor(Constructor<?> constructor, String beanName) {
-		Object instance;
-		try {
-			//获取构造器需要的参数列表
-			final var types = constructor.getParameterTypes();
-			final var args = Arrays.stream(types)
-					.map(type -> {
-						String ret;
-						//都给容器管理了怎么可能没有Component.class注解 我智障了
-//						if (AnnotationUtil.annotationClass(type, Component.class)) {
-						//获取组件上的beanName
-						final var value = AnnotationUtil.getAnnotation(type, Component.class).value();
-						if (value.equals("")) {
-							ret = StringUtil.toLowerCase(type.getSimpleName());
-						} else {
-							ret = value;
-						}
-						return ret;
-					})
-					.map(this::getBean)
-					.toArray();
-			//实例化对象
-			instance = constructor.newInstance(args);
-			
-			//回调,告诉实例它被分配到的beanName
-			initAware(instance, beanName);
-			//初始化前
-			for (BeanPostProcess process : beanPostProcesslist) {
-				instance = process.postProcessBeforeInitalizing(beanName, instance);
-			}
-			//Autowrite 依赖注入简易版
-			initField(instance);
-			//在构造器对象创建出来后进行属性注入
-			initProperties(instance);
-			//用户做的初始化 属性被设置完毕后
-			initHook(instance);
-			//初始化后
-			for (BeanPostProcess process : beanPostProcesslist) {
-				instance = process.afterProcessBeforeInitalizing(beanName, instance);
-			}
-			
-		} catch (Exception e) {
-			throw new NullPointerException(String.format("找不到或没有那个bean\r\t%s", e.getMessage()));
-		}
-		return instance;
-	}
-	
-	/**
-	 * 无参构造器
-	 * @param constructor 无参构造器
-	 * @param beanName beanName
-	 * @return 构造完毕的对象
-	 */
-	private Object createNoArgsConstructor(Constructor<?> constructor, String beanName) {
-		try {
-			Object instance = constructor.newInstance();
-			//回调,告诉实例它被分配到的beanName
-			initAware(instance, beanName);
-			//初始化前
-			for (BeanPostProcess process : beanPostProcesslist) {
-				instance = process.postProcessBeforeInitalizing(beanName, instance);
-			}
-			//Autowrite 依赖注入简易版
-			initField(instance);
-			//在构造器对象创建出来后进行属性注入
-			initProperties(instance);
-			//初始化 属性被设置完毕后
-			initHook(instance);
-			//初始化后
-			for (BeanPostProcess process : beanPostProcesslist) {
-				instance = process.afterProcessBeforeInitalizing(beanName, instance);
-			}
-			return instance;
-		} catch (Exception e) {
-			throw new RuntimeException(e);
-		}
-	}
-	
-	private void initHook(Object instance) {
-		//初始化
-		if (instance instanceof InitalizingBean initalizingBean) {
-			initalizingBean.afterPropertiesSet();
-		}
-	}
-	
-	/**
-	 * 告诉实例它被分配到的beanName
-	 * @param instance 实例对象
-	 * @param beanName beanName
-	 */
-	private void initAware(Object instance, String beanName) {
-		//回调
-		if (instance instanceof BeanNameAware ins) {
-			ins.setBeanName(beanName);
-		}
-	}
-	
-	/**
-	 * 对被{@link Autowrite} 注释了的属性进行对象注入
-	 * @param instance 需要被注入属性的实例对象
-	 * @throws IllegalAccessException 不满足装配条件的时候抛出异常
-	 */
-	private void initField(Object instance) throws IllegalAccessException {
-		//找到被Autowrite注释了的字段
-		final Class<?> clazz = instance.getClass();
-		final var fields = AnnotationUtil.annotationFields(clazz.getDeclaredFields(), Autowrite.class);
-		for (Field field : fields) {
-			field.setAccessible(true);
-			field.set(instance, getBean(field.getName()));
-		}
-		final var methods = AnnotationUtil.annotationMethods(clazz.getMethods(), Autowrite.class);
-		try {
-			for (Method method : methods) {
-				//基于set里面的参数类型进行自动装配
-				final var types = method.getParameterTypes();
-				for (Class<?> type : types) {
-					final var bean = getBean(StringUtil.toLowerCase(type.getSimpleName()));
-					method.invoke(instance, bean);
-				}
-			}
-		} catch (InvocationTargetException e) {
-			throw new RuntimeException(instance.getClass().getSimpleName()+"\r没有满足自动装配条件",e);
-		}
-		
-	}
-	
-	@Override
-	public Object getBean(String beanName) {
-		//从bean信息池寻找这个bean
-		BeanDefinition beanDefinition = beanDefinitionMap.get(beanName);
-		Assert.requireNotNull(beanDefinition, new NullPointerException("没有那个bean"));
-		//获取这个bean的描述，是单例还是多例
-		String scope = beanDefinition.getScope();
-		if (scope.equals(Constant.SINGLETON)) {
-			var instance = singletonObjects.get(beanName);
-			if (instance == null) {
-				instance = createBean( beanDefinition);
-				singletonObjects.put(beanName, instance);
-			}
-			return instance;
-		} else {
-			//这里是多例
-			return createBean( beanDefinition);
-		}
-	}
-	
-	
-	@SuppressWarnings({"unchecked"})
-	@Override
-	public <T> T getBean(String beanName, Class<T> type) {
-		final var beanDefinition = beanDefinitionMap.get(beanName);
-		Assert.requireNotNull(beanDefinition, new NullPointerException("没有那个bean"));
-		final var scope = beanDefinition.getScope();
-		if (scope.equals(Constant.SINGLETON)) {
-			var instance = singletonObjects.get(beanName);
-			if (instance == null) {
-				instance = createBean( beanDefinition);
-				singletonObjects.put(beanName, instance);
-			}
-			return (T) instance;
-		} else {
-			//多例
-			return (T) createBean(beanDefinition);
-		}
-	}
-	
-	@SuppressWarnings({"unchecked"})
-	@Override
-	public <T> T getBean(Class<T> type) {
-		final var definition = getBeanDefinition(type);
-		Assert.requireNotNull(definition, new NullPointerException("没有那个bean"));
-		final var scope = definition.getScope();
-		final var beanName = definition.getName();
-		if (scope.equals(Constant.SINGLETON)) {
-			var instance = singletonObjects.get(definition.getName());
-			if (instance == null) {
-				instance = createBean(definition);
-				singletonObjects.put(beanName, instance);
-			}
-			return (T) instance;
-		} else {
-			return (T) createBean(definition);
-		}
-	}
-	
-	@Override
-	public BeanDefinition getBeanDefinition(Class<?> type) {
-		final var definition = beanDefinitionMap
-				.values()
-				.stream()
-				.filter(beanDefinition -> beanDefinition.getType() == type)
-				.findFirst();
-		return definition.orElse(null);
-	}
-	
-	@Override
-	public BeanDefinition getBeanDefinition(String beanName) {
-		Assert.requireNotNull(beanName);
-		return beanDefinitionMap.get(beanName);
-	}
-	
 	protected static Class<?> getMainApplicationClass() {
 		return ApplicationContext.mainApplicationClass;
 	}
