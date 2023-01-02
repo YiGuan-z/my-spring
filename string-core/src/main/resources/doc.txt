@@ -19,3 +19,6 @@ issues:
     2.ApplicationConfig除了标记配置类后进行包扫描以外没有其它用处 现在只是定义个一个模型
     3.越写越乱,或许应该考虑分包
     4.Builder 或许可以再自定义一下,让它替代getBean里面的createBean功能
+    5.注解解析器
+    6.bean解析器
+    7.懒加载对象还没有做

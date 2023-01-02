@@ -2,11 +2,8 @@
 <project version="4">
   <component name="EntryPointsManager">
     <list size="1">
-      <item index="0" class="java.lang.String" itemvalue="com.cqsd.spring.core.annotation.Component" />
+      <item index="0" class="java.lang.String" itemvalue="com.cqsd.core.annotation.Component" />
     </list>
-    <writeAnnotations>
-      <writeAnnotation name="com.cqsd.spring.core.annotation.Value" />
-    </writeAnnotations>
   </component>
   <component name="ExternalStorageConfigurationManager" enabled="true" />
   <component name="MavenProjectsManager">
@@ -16,10 +13,5 @@
       </list>
     </option>
   </component>
-  <component name="ProjectRootManager" version="2" languageLevel="JDK_19" default="true" project-jdk-name="jdk@19" project-jdk-type="JavaSDK">
-    <output url="file://$PROJECT_DIR$/out" />
-  </component>
-  <component name="ProjectType">
-    <option name="id" value="jpab" />
-  </component>
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_19" default="true" project-jdk-name="jdk@19" project-jdk-type="JavaSDK" />
 </project>

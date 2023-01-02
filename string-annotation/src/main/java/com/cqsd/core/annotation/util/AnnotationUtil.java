@@ -1,4 +1,4 @@
-package com.cqsd.spring.core.util;
+package com.cqsd.core.annotation.util;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;

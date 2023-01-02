@@ -1,4 +1,4 @@
-package com.cqsd.spring.core.annotation;
+package com.cqsd.core.annotation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

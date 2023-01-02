@@ -1,4 +1,4 @@
-package com.cqsd.spring.core.annotation.wait;
+package com.cqsd.core.annotation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -6,10 +6,10 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * 标识这是一个Java配置类，只有使用了这个注解的类才能被解析为一个配置类
- * TODO 计划实现
+ * 标识这是个Application引导类
+ * 没有被这个注解标记的类无法启动
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
-public @interface Configuration {
+public @interface ApplicationBoot {
 }

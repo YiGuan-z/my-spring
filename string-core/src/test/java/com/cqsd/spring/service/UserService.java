@@ -1,9 +1,10 @@
 package com.cqsd.spring.service;
 
 
-import com.cqsd.spring.core.annotation.Component;
-import com.cqsd.spring.core.annotation.Scope;
-import com.cqsd.spring.core.annotation.Value;
+
+import com.cqsd.core.annotation.Component;
+import com.cqsd.core.annotation.Scope;
+import com.cqsd.core.annotation.Value;
 import com.cqsd.spring.core.face.hook.InitalizingBean;
 import com.cqsd.spring.core.face.hook.aware.BeanNameAware;
 

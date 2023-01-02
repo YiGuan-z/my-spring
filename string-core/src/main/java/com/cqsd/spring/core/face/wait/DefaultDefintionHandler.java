@@ -7,6 +7,6 @@ import com.cqsd.spring.core.face.core.model.Defintion;
 /**
  * Defintion处理器
  */
-public interface DefintionHandler extends Handler, BeanFactory {
+public interface DefaultDefintionHandler extends Handler, BeanFactory {
 	<T extends DefaltBeanDefintion> T DefintionHandlerProcess(Defintion defintion);
 }

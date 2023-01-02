@@ -10,6 +10,7 @@
     <modules>
         <module>string-core</module>
         <module>pub-sub</module>
+        <module>string-annotation</module>
     </modules>
     <packaging>pom</packaging>
     <dependencies>
@@ -20,6 +21,21 @@
     </dependencies>
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>com.cqsd</groupId>
+                <artifactId>string-annotation</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.cqsd</groupId>
+                <artifactId>string-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.cqsd</groupId>
+                <artifactId>pub-sub</artifactId>
+                <version>${project.version}</version>
+            </dependency>
             <dependency>
                 <groupId>org.junit.jupiter</groupId>
                 <artifactId>junit-jupiter</artifactId>

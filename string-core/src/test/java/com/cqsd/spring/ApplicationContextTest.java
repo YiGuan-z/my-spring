@@ -1,9 +1,10 @@
 package com.cqsd.spring;
 
+import com.cqsd.core.annotation.ApplicationBoot;
+import com.cqsd.core.annotation.ApplicationConfig;
+import com.cqsd.core.annotation.ApplicationConfigFile;
 import com.cqsd.spring.core.ApplicationContext;
-import com.cqsd.spring.core.annotation.ApplicationBoot;
-import com.cqsd.spring.core.annotation.ApplicationConfig;
-import com.cqsd.spring.core.annotation.ApplicationConfigFile;
+
 import com.cqsd.spring.core.face.core.Application;
 import com.cqsd.spring.service.AppConfig;
 import com.cqsd.spring.service.UserInterface;
@@ -31,7 +32,7 @@ class ApplicationContextTest {
 	@Test
 	void testIoc(){
 		final Application context = new ApplicationContext(ApplicationContextTest.class);
-		final var bean = context.getBean("userService",UserInterface.class);
+		final var bean =(UserInterface) context.getBean("userService",UserInterface.class);
 		bean.test();
 	}
 }

@@ -1,7 +1,7 @@
 package com.cqsd.spring.service;
 
 
-import com.cqsd.spring.core.annotation.Component;
+import com.cqsd.core.annotation.Component;
 import com.cqsd.spring.core.face.hook.InitalizingBean;
 
 @Component
