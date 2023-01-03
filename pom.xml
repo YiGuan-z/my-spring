@@ -11,6 +11,7 @@
         <module>string-core</module>
         <module>pub-sub</module>
         <module>string-annotation</module>
+        <module>string-boot</module>
     </modules>
     <packaging>pom</packaging>
     <dependencies>

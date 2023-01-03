@@ -4,6 +4,7 @@ import com.cqsd.core.annotation.Autowrite;
 import com.cqsd.core.annotation.Component;
 import com.cqsd.core.annotation.Value;
 import com.cqsd.core.annotation.util.AnnotationUtil;
+import com.cqsd.spring.core.db.Context;
 import com.cqsd.spring.core.face.core.BeanFactory;
 import com.cqsd.spring.core.face.hook.BeanPostProcess;
 import com.cqsd.spring.core.face.hook.InitalizingBean;
@@ -16,7 +17,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author caseycheng
@@ -24,13 +24,13 @@ import java.util.concurrent.ConcurrentHashMap;
  **/
 public class AppFactory implements BeanFactory {
     //bean信息池
-    protected final static Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>();
+//    protected final static Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>();
     //单例池
-    protected final static Map<String, Object> singletonObjects = new ConcurrentHashMap<>();
+//    protected final static Map<String, Object> singletonObjects = new ConcurrentHashMap<>();
     //Bean处理器池
     protected final static List<BeanPostProcess> beanPostProcesslist = new ArrayList<>();
     //配置文件环境
-    protected final static Properties appProperties = new Properties();
+//    protected final static Properties appProperties = new Properties();
 
 
     public Object createBean(BeanDefinition definition) {
@@ -52,15 +52,16 @@ public class AppFactory implements BeanFactory {
     @Override
     public Object getBean(String beanName) {
         //从bean信息池寻找这个bean
-        BeanDefinition beanDefinition = beanDefinitionMap.get(beanName);
+        BeanDefinition beanDefinition = Context.beanDefinitionMap().get(beanName);
         Assert.requireNotNull(beanDefinition, new NullPointerException("没有那个bean"));
         //获取这个bean的描述，是单例还是多例
         String scope = beanDefinition.getScope();
+        final var singletionObjects = Context.singletionobjects();
         if (scope.equals(Constant.SINGLETON)) {
-            var instance = singletonObjects.get(beanName);
+            var instance = singletionObjects.get(beanName);
             if (instance == null) {
                 instance = createBean(beanDefinition);
-                singletonObjects.put(beanName, instance);
+                singletionObjects.put(beanName, instance);
             }
             return instance;
         } else {
@@ -72,14 +73,15 @@ public class AppFactory implements BeanFactory {
     @SuppressWarnings({"unchecked"})
     @Override
     public <T> T getBean(String beanName, Class<T> type) {
-        final var beanDefinition = beanDefinitionMap.get(beanName);
+        final var beanDefinition = Context.beanDefinitionMap().get(beanName);
         Assert.requireNotNull(beanDefinition, new NullPointerException("没有那个bean"));
         final var scope = beanDefinition.getScope();
+        final var singletionObjects = Context.singletionobjects();
         if (scope.equals(Constant.SINGLETON)) {
-            var instance = singletonObjects.get(beanName);
+            var instance = singletionObjects.get(beanName);
             if (instance == null) {
                 instance = createBean(beanDefinition);
-                singletonObjects.put(beanName, instance);
+                singletionObjects.put(beanName, instance);
             }
             return (T) instance;
         } else {
@@ -95,11 +97,13 @@ public class AppFactory implements BeanFactory {
         Assert.requireNotNull(definition, new NullPointerException("没有那个bean"));
         final var scope = definition.getScope();
         final var beanName = definition.getName();
+        final var singletionObjects = Context.singletionobjects();
         if (scope.equals(Constant.SINGLETON)) {
-            var instance = singletonObjects.get(definition.getName());
+            var instance = singletionObjects
+                    .get(definition.getName());
             if (instance == null) {
                 instance = createBean(definition);
-                singletonObjects.put(beanName, instance);
+                singletionObjects.put(beanName, instance);
             }
             return (T) instance;
         } else {
@@ -109,7 +113,7 @@ public class AppFactory implements BeanFactory {
 
     @Override
     public BeanDefinition getBeanDefinition(Class<?> type) {
-        final var definition = beanDefinitionMap
+        final var definition = Context.beanDefinitionMap()
                 .values()
                 .stream()
                 .filter(beanDefinition -> beanDefinition.getType() == type)
@@ -120,7 +124,7 @@ public class AppFactory implements BeanFactory {
     @Override
     public BeanDefinition getBeanDefinition(String beanName) {
         Assert.requireNotNull(beanName);
-        return beanDefinitionMap.get(beanName);
+        return Context.beanDefinitionMap().get(beanName);
     }
 
     /**
@@ -230,7 +234,7 @@ public class AppFactory implements BeanFactory {
                     Object value;
                     if (StringUtil.isExtra(express)) {
                         final var path = StringUtil.subExpr(express);
-                        value = appProperties.get(path);
+                        value = Context.appEnv().get(path);
                     } else {
                         value = Transform.trans(express, field.getType());
                     }
@@ -276,19 +280,7 @@ public class AppFactory implements BeanFactory {
 
     }
 
-    public static Map<String, BeanDefinition> getBeanDefinitionMap() {
-        return beanDefinitionMap;
-    }
-
-    public static Map<String, Object> getSingletonObjects() {
-        return singletonObjects;
-    }
-
     public static List<BeanPostProcess> getBeanPostProcesslist() {
         return beanPostProcesslist;
-    }
-
-    public static Properties getAppProperties() {
-        return appProperties;
     }
 }

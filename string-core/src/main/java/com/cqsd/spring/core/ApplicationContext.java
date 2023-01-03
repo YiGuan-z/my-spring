@@ -3,6 +3,7 @@ package com.cqsd.spring.core;
 
 import com.cqsd.core.annotation.*;
 import com.cqsd.core.annotation.util.AnnotationUtil;
+import com.cqsd.spring.core.db.Context;
 import com.cqsd.spring.core.face.core.Application;
 import com.cqsd.spring.core.face.hook.BeanPostProcess;
 import com.cqsd.spring.core.face.hook.aware.ApplicationAware;
@@ -15,20 +16,18 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
 
 public class ApplicationContext extends AppFactory implements Application {
     //配置类集合
-    private final static List<Class<?>> configClass = new ArrayList<>();
     //启动应用程序的类
     private static Class<?> mainApplicationClass;
     //日后可能会用到的东西
     private final static Unsafe unsafe = UnsafeUtil.getUnsafe();
     //类加载器
     private final static ClassLoader classLoader = ApplicationContext.class.getClassLoader();
+    private static final ThreadGroup threadGroup = new ThreadGroup("worker");
 
     /**
      * 对配置类进行初始化操作，找到上面定义的包扫描路径扫描出Bean组件，优先创建出来
@@ -45,7 +44,7 @@ public class ApplicationContext extends AppFactory implements Application {
             //如果存在java配置集合就把集合找出来,添加到configList中
             addJavaConfigClass();
             //通过java配置来对class文件进行加载
-            final var configList = getConfigClass();
+            final var configList = Context.configClass();
             for (Class<?> config : configList) {
                 if (config.isAnnotationPresent(ComponentScans.class)) {
                     var scans = AnnotationUtil.getAnnotation(config, ComponentScans.class).value();
@@ -69,13 +68,13 @@ public class ApplicationContext extends AppFactory implements Application {
         if (AnnotationUtil.isAnnotation(getMainApplicationClass(), ApplicationConfigs.class)) {
             final var configs = AnnotationUtil.getAnnotation(getMainApplicationClass(), ApplicationConfigs.class);
             final var configList = Arrays.stream(configs.value()).distinct().map(ApplicationConfig::value).toList();
-            ApplicationContext.getConfigClass().addAll(configList);
+            Context.configClass().addAll(configList);
         }
         if (AnnotationUtil.isAnnotation(getMainApplicationClass(), ApplicationConfig.class)) {
             final var config = AnnotationUtil.getAnnotation(getMainApplicationClass(), ApplicationConfig.class).value();
-            ApplicationContext.getConfigClass().add(config);
+            Context.configClass().add(config);
         }
-        if (ApplicationContext.configClass.size() < 1) {
+        if (Context.configClass().size() < 1) {
             throw new RuntimeException("请指定一个配置类");
         }
     }
@@ -94,7 +93,7 @@ public class ApplicationContext extends AppFactory implements Application {
         url = getClassLoader().getResource(fileName);
         if (url != null) {
             try (final var resource = new FileReader(url.getFile())) {
-                appProperties.load(resource);
+                Context.appEnv().load(resource);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -114,6 +113,7 @@ public class ApplicationContext extends AppFactory implements Application {
         //通过类加载器来获取本类下面的Java文件资源
         URL resource = getClassLoader().getResource(path);
         File file = new File(Objects.requireNonNull(resource).getFile());
+        final var definitionMap = Context.beanDefinitionMap();
         if (file.isDirectory()) {
             File[] files = file.listFiles();
             for (File f : Objects.requireNonNull(files)) {
@@ -145,7 +145,7 @@ public class ApplicationContext extends AppFactory implements Application {
                                     .with(BeanDefinition::setType, clazz)
                                     .with(BeanDefinition::setName, beanName)
                                     .with(BeanDefinition::setScope, beanScope);
-                            beanDefinitionMap.put(beanName, beanDefinitionBuilder.build());
+                            definitionMap.put(beanName, beanDefinitionBuilder.build());
                         }
                     } catch (ClassNotFoundException e) {
                         e.printStackTrace();
@@ -153,13 +153,14 @@ public class ApplicationContext extends AppFactory implements Application {
                 }
             }
         }
+        final var singletionObjects = Context.singletionobjects();
         //对检测到的bean对象进行预先处理
-        for (String beanName : beanDefinitionMap.keySet()) {
-            BeanDefinition beanDefinition = beanDefinitionMap.get(beanName);
+        for (String beanName : definitionMap.keySet()) {
+            BeanDefinition beanDefinition = definitionMap.get(beanName);
             //将单例创建出来放入单例池中
             if (beanDefinition.getScope().equals(Constant.SINGLETON)) {
                 Object bean = createBean(beanDefinition);
-                singletonObjects.put(beanName, bean);
+                singletionObjects.put(beanName, bean);
             }
             //如果是bean对象处理器就立即实例化并放入bean对象处理器列表中
             if (BeanPostProcess.class.isAssignableFrom(beanDefinition.getType())) {
@@ -185,9 +186,6 @@ public class ApplicationContext extends AppFactory implements Application {
         ApplicationContext.mainApplicationClass = mainApplicationClass;
     }
 
-    protected static List<Class<?>> getConfigClass() {
-        return configClass;
-    }
 
     protected static ClassLoader getClassLoader() {
         return classLoader;
