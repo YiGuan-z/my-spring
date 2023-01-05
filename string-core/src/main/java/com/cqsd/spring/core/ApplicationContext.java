@@ -8,6 +8,7 @@ import com.cqsd.spring.core.face.core.Application;
 import com.cqsd.spring.core.face.hook.BeanPostProcess;
 import com.cqsd.spring.core.face.hook.aware.ApplicationAware;
 import com.cqsd.spring.core.face.wait.MappingObject;
+import com.cqsd.spring.core.face.wait.ScanAnnotationProcess;
 import com.cqsd.spring.core.model.BeanDefinition;
 import com.cqsd.spring.core.util.*;
 import sun.misc.Unsafe;
@@ -15,9 +16,12 @@ import sun.misc.Unsafe;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.lang.annotation.Annotation;
 import java.net.URL;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ApplicationContext extends AppFactory implements Application {
     //配置类集合
@@ -96,6 +100,56 @@ public class ApplicationContext extends AppFactory implements Application {
                 Context.appEnv().load(resource);
             } catch (IOException e) {
                 throw new RuntimeException(e);
+            }
+        }
+    }
+
+    private void scan(String path) {
+        //path第一个/路径就是定义的包名
+        var packageName = path.split("\\.")[0];
+        //将Java包名做成找到Java文件的路径名
+        path = path.replace('.', '/');
+        //通过类加载器来获取本类下面的Java文件资源
+        URL resource = getClassLoader().getResource(path);
+        File file = new File(Objects.requireNonNull(resource).getFile());
+        final var definitionMap = Context.beanDefinitionMap();
+        if (file.isDirectory()) {
+            File[] files = file.listFiles();
+            for (File f : Objects.requireNonNull(files)) {
+                String fileName = f.getAbsolutePath();
+                //定位包路径
+                fileName = fileName.substring(fileName.indexOf(packageName)).replace('/', '.');
+                //找到class文件并加载
+                if (fileName.endsWith(".class")) {
+                    try {
+                        //获取类路径
+                        String classname = fileName.substring(0, fileName.indexOf(".class"));
+                        Class<?> clazz = classLoader.loadClass(classname);
+                        //如果是一个组件
+//                        if (clazz.isAnnotationPresent(Component.class)) {
+//                            final var beanDefinitionBuilder = Builder.builder(BeanDefinition::new);
+//                            final var component = clazz.getAnnotation(Component.class);
+//                            var beanName = component.value();
+//                            //设置bean name 如果没有设置beanName就将类名的第一个字母小写
+//                            if ("".equals(beanName)) {
+//                                beanName = StringUtil.toLowerCase(clazz.getSimpleName());
+//                            }
+//                            //设置作用域 默认是单例
+//                            String beanScope = Constant.SINGLETON;
+//                            if (clazz.isAnnotationPresent(Scope.class)) {
+//                                final var scope = clazz.getAnnotation(Scope.class);
+//                                beanScope = scope.value();
+//                            }
+//                            beanDefinitionBuilder
+//                                    .with(BeanDefinition::setType, clazz)
+//                                    .with(BeanDefinition::setName, beanName)
+//                                    .with(BeanDefinition::setScope, beanScope);
+//                            definitionMap.put(beanName, beanDefinitionBuilder.build());
+//                        }
+                    } catch (ClassNotFoundException e) {
+                        e.printStackTrace();
+                    }
+                }
             }
         }
     }
